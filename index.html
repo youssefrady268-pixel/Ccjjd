@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebChat</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: #f1f5f9;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .chat-card {
+      width: 100%;
+      max-width: 800px;
+      height: 600px;
+      background: #ffffff;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      display: flex;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Auth Overlay */
+    .auth-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.95);
+      z-index: 30;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .auth-overlay.hidden { display: none; }
+    .auth-title { font-size: 1.75rem; font-weight: 700; color: #ffffff; margin-bottom: 8px; }
+    .auth-desc { color: #94a3b8; font-size: 0.875rem; margin-bottom: 24px; }
+
+    .auth-form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+      max-width: 320px;
+    }
+
+    .auth-input {
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      font-size: 0.875rem;
+      outline: none;
+      background: #ffffff;
+    }
+
+    .btn-auth {
+      background: #38bdf8;
+      color: #0f172a;
+      font-weight: 600;
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      margin-top: 4px;
+    }
+
+    .btn-auth:hover { background: #0ea5e9; }
+
+    .auth-switch {
+      color: #94a3b8;
+      font-size: 0.8rem;
+      margin-top: 16px;
+      cursor: pointer;
+    }
+
+    .auth-switch span { color: #38bdf8; text-decoration: underline; }
+
+    /* Sidebar / User Search */
+    .sidebar {
+      width: 280px;
+      background: #f8fafc;
+      border-right: 1px solid #e2e8f0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-header {
+      padding: 16px;
+      background: #1e293b;
+      color: #ffffff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: #38bdf8;
+    }
+
+    .search-box {
+      padding: 12px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    .users-list {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .user-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px;
+      cursor: pointer;
+      border-bottom: 1px solid #f1f5f9;
+      transition: background 0.2s;
+    }
+
+    .user-item:hover, .user-item.active {
+      background: #e2e8f0;
+    }
+
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #cbd5e1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      color: #334155;
+      font-size: 0.85rem;
+    }
+
+    .user-item-name {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #334155;
+    }
+
+    /* Main Chat Area */
+    .chat-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #ffffff;
+    }
+
+    .chat-header {
+      background: #ffffff;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 16px;
+      font-weight: 600;
+      color: #1e293b;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .messages-container {
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+      background: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .msg-row { display: flex; gap: 8px; }
+    .msg-row.sent { flex-direction: row-reverse; }
+    .msg-row.received { flex-direction: row; }
+
+    .msg-content-wrapper { display: flex; flex-direction: column; }
+    .msg-row.sent .msg-content-wrapper { align-items: flex-end; }
+    .msg-row.received .msg-content-wrapper { align-items: flex-start; }
+
+    .msg-bubble {
+      max-width: 280px;
+      padding: 8px 12px;
+      border-radius: 12px;
+      font-size: 0.875rem;
+      word-break: break-word;
+    }
+
+    .msg-row.sent .msg-bubble { background: #1e293b; color: #ffffff; }
+    .msg-row.received .msg-bubble { background: #ffffff; color: #1e293b; border: 1px solid #e2e8f0; }
+
+    .chat-form {
+      padding: 12px;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      gap: 8px;
+    }
+
+    .chat-input {
+      flex: 1;
+      padding: 8px 16px;
+      background: #f1f5f9;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      border: 1px solid transparent;
+      outline: none;
+    }
+
+    .btn-send {
+      background: #1e293b;
+      color: #ffffff;
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+    }
+
+    .btn-logout {
+      font-size: 0.75rem;
+      background: #334155;
+      color: #ffffff;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .empty-state {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #94a3b8;
+      font-size: 0.875rem;
+    }
+
+    .error-msg {
+      color: #f87171;
+      font-size: 0.75rem;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="chat-card">
+    
+    <!-- Auth Overlay (Login / Create Account) -->
+    <div id="auth-screen" class="auth-overlay">
+      <h2 id="auth-heading" class="auth-title">Welcome to WebChat</h2>
+      <p id="auth-subdesc" class="auth-desc">Sign in to your account to continue</p>
+      
+      <form id="auth-form" class="auth-form">
+        <input id="display-name-input" type="text" placeholder="Your Name" class="auth-input" style="display: none;">
+        <input id="email-input" type="email" placeholder="Email address" required class="auth-input">
+        <input id="password-input" type="password" placeholder="Password" required class="auth-input">
+        <div id="auth-error" class="error-msg"></div>
+        <button type="submit" id="auth-submit-btn" class="btn-auth">Sign In</button>
+      </form>
+
+      <div id="auth-switch-text" class="auth-switch">
+        Don't have an account? <span id="switch-mode-btn">Create account</span>
+      </div>
+    </div>
+
+    <!-- Sidebar: User Search & List -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <span class="brand-title">WebChat</span>
+        <button id="logout-btn" class="btn-logout">Logout</button>
+      </div>
+      <div class="search-box">
+        <input id="search-input" type="text" placeholder="Search users by name..." class="search-input">
+      </div>
+      <div id="users-list" class="users-list"></div>
+    </div>
+
+    <!-- Main Chat Window -->
+    <div class="chat-main">
+      <div id="chat-header" class="chat-header">Select a user to chat</div>
+      <div id="messages" class="messages-container">
+        <div class="empty-state">No chat selected</div>
+      </div>
+      <form id="chat-form" class="chat-form">
+        <input id="message-input" type="text" placeholder="Type a message..." autocomplete="off" disabled required class="chat-input">
+        <button type="submit" id="send-btn" disabled class="btn-send">Send</button>
+      </form>
+    </div>
+
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getDatabase, ref, set, push, onValue, off, onChildAdded } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBeRfIED1MQmJURqDCL3c0DBBLquC5qaQU",
+      authDomain: "myppphfgg.firebaseapp.com",
+      databaseURL: "https://myppphfgg-default-rtdb.firebaseio.com",
+      projectId: "myppphfgg",
+      storageBucket: "myppphfgg.appspot.com",
+      messagingSenderId: "770434269900",
+      appId: "1:770434269900:web:157850f90347bbcd38b869"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const auth = getAuth(app);
+
+    let currentUser = null;
+    let selectedUser = null;
+    let currentRoomId = null;
+    let messagesListener = null;
+    let allUsers = {};
+    let isSignUpMode = false;
+
+    const authScreen = document.getElementById('auth-screen');
+    const authHeading = document.getElementById('auth-heading');
+    const authSubdesc = document.getElementById('auth-subdesc');
+    const authForm = document.getElementById('auth-form');
+    const displayNameInput = document.getElementById('display-name-input');
+    const emailInput = document.getElementById('email-input');
+    const passwordInput = document.getElementById('password-input');
+    const authSubmitBtn = document.getElementById('auth-submit-btn');
+    const authError = document.getElementById('auth-error');
+    const authSwitchText = document.getElementById('auth-switch-text');
+    const switchModeBtn = document.getElementById('switch-mode-btn');
+
+    const logoutBtn = document.getElementById('logout-btn');
+    const searchInput = document.getElementById('search-input');
+    const usersList = document.getElementById('users-list');
+    const chatHeader = document.getElementById('chat-header');
+    const messagesContainer = document.getElementById('messages');
+    const chatForm = document.getElementById('chat-form');
+    const messageInput = document.getElementById('message-input');
+    const sendBtn = document.getElementById('send-btn');
+
+    // Toggle between Login and Create Account view
+    switchModeBtn.addEventListener('click', () => {
+      isSignUpMode = !isSignUpMode;
+      authError.textContent = '';
+      if (isSignUpMode) {
+        authHeading.textContent = 'Create Account';
+        authSubdesc.textContent = 'Sign up to start chatting';
+        displayNameInput.style.display = 'block';
+        displayNameInput.required = true;
+        authSubmitBtn.textContent = 'Sign Up';
+        authSwitchText.innerHTML = 'Already have an account? <span id="switch-mode-btn">Sign in</span>';
+      } else {
+        authHeading.textContent = 'Welcome to WebChat';
+        authSubdesc.textContent = 'Sign in to your account to continue';
+        displayNameInput.style.display = 'none';
+        displayNameInput.required = false;
+        authSubmitBtn.textContent = 'Sign In';
+        authSwitchText.innerHTML = 'Don\'t have an account? <span id="switch-mode-btn">Create account</span>';
+      }
+      document.getElementById('switch-mode-btn').addEventListener('click', arguments.callee);
+    });
+
+    // Handle form submission for Login / Sign Up
+    authForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      authError.textContent = '';
+      const email = emailInput.value.trim();
+      const password = passwordInput.value.trim();
+
+      try {
+        if (isSignUpMode) {
+          const name = displayNameInput.value.trim();
+          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          await updateProfile(userCredential.user, { displayName: name });
+        } else {
+          await signInWithEmailAndPassword(auth, email, password);
+        }
+      } catch (err) {
+        authError.textContent = err.message;
+      }
+    });
+
+    // Logout and clear local storage session cache
+    logoutBtn.addEventListener('click', () => {
+      signOut(auth);
+      localStorage.removeItem('webchat_user');
+    });
+
+    onAuthStateChanged(auth, (user) => {
+      currentUser = user;
+      if (user) {
+        authScreen.classList.add('hidden');
+        
+        const userData = {
+          uid: user.uid,
+          displayName: user.displayName || user.email.split('@')[0],
+          email: user.email
+        };
+
+        // Save session locally using localStorage
+        localStorage.setItem('webchat_user', JSON.stringify(userData));
+
+        set(ref(db, 'users/' + user.uid), userData);
+        loadUsers();
+      } else {
+        authScreen.classList.remove('hidden');
+        localStorage.removeItem('webchat_user');
+        emailInput.value = '';
+        passwordInput.value = '';
+        displayNameInput.value = '';
+      }
+    });
+
+    // Check localStorage on initial page load
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedUser = localStorage.getItem('webchat_user');
+      if (savedUser && !auth.currentUser) {
+        // Optional quick-load from cache if needed before Firebase initializes fully
+      }
+    });
+
+    function loadUsers() {
+      onValue(ref(db, 'users'), (snapshot) => {
+        allUsers = snapshot.val() || {};
+        renderUsersList(allUsers);
+      });
+    }
+
+    searchInput.addEventListener('input', (e) => {
+      const term = e.target.value.toLowerCase();
+      const filtered = {};
+      Object.keys(allUsers).forEach(uid => {
+        if (allUsers[uid].displayName.toLowerCase().includes(term)) {
+          filtered[uid] = allUsers[uid];
+        }
+      });
+      renderUsersList(filtered);
+    });
+
+    function renderUsersList(users) {
+      usersList.innerHTML = '';
+      Object.values(users).forEach(user => {
+        if (user.uid === currentUser.uid) return;
+
+        const initial = (user.displayName || 'U').charAt(0).toUpperCase();
+        const el = document.createElement('div');
+        el.className = `user-item ${selectedUser?.uid === user.uid ? 'active' : ''}`;
+        el.innerHTML = `
+          <div class="user-avatar">${initial}</div>
+          <span class="user-item-name">${escapeHTML(user.displayName)}</span>
+        `;
+        el.addEventListener('click', () => startPrivateChat(user));
+        usersList.appendChild(el);
+      });
+    }
+
+    function startPrivateChat(targetUser) {
+      selectedUser = targetUser;
+      renderUsersList(allUsers);
+
+      const initial = (targetUser.displayName || 'U').charAt(0).toUpperCase();
+      chatHeader.innerHTML = `
+        <div class="user-avatar" style="width:32px;height:32px;font-size:0.75rem;">${initial}</div>
+        <span>${escapeHTML(targetUser.displayName)}</span>
+      `;
+
+      messageInput.disabled = false;
+      sendBtn.disabled = false;
+
+      currentRoomId = [currentUser.uid, targetUser.uid].sort().join('_');
+      listenForMessages(currentRoomId);
+    }
+
+    function listenForMessages(roomId) {
+      messagesContainer.innerHTML = '';
+      if (messagesListener) off(messagesListener);
+
+      const roomRef = ref(db, `chats/${roomId}`);
+      messagesListener = onChildAdded(roomRef, (snapshot) => {
+        const data = snapshot.val();
+        const isSelf = data.senderId === currentUser.uid;
+
+        const msgRow = document.createElement('div');
+        msgRow.className = `msg-row ${isSelf ? 'sent' : 'received'}`;
+        msgRow.innerHTML = `
+          <div class="msg-content-wrapper">
+            <div class="msg-bubble">${escapeHTML(data.text)}</div>
+          </div>
+        `;
+
+        messagesContainer.appendChild(msgRow);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      });
+    }
+
+    chatForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const text = messageInput.value.trim();
+
+      if (text && currentRoomId) {
+        push(ref(db, `chats/${currentRoomId}`), {
+          senderId: currentUser.uid,
+          text: text,
+          timestamp: Date.now()
+        });
+        messageInput.value = '';
+      }
+    });
+
+    function escapeHTML(str) {
+      return str.replace(/[&<>'"]/g, 
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+      );
+    }
+  </script>
+</body>
+</html>
+
