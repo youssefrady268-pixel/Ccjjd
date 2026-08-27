@@ -326,9 +326,10 @@
       authDomain: "myppphfgg.firebaseapp.com",
       databaseURL: "https://myppphfgg-default-rtdb.firebaseio.com",
       projectId: "myppphfgg",
-      storageBucket: "myppphfgg.appspot.com",
+      storageBucket: "myppphfgg.firebasestorage.app",
       messagingSenderId: "770434269900",
-      appId: "1:770434269900:web:157850f90347bbcd38b869"
+      appId: "1:770434269900:web:157850f90347bbcd38b869",
+      measurementId: "G-DZ1R0TMV53"
     };
 
     const app = initializeApp(firebaseConfig);
@@ -436,14 +437,6 @@
       }
     });
 
-    // Check localStorage on initial page load
-    window.addEventListener('DOMContentLoaded', () => {
-      const savedUser = localStorage.getItem('webchat_user');
-      if (savedUser && !auth.currentUser) {
-        // Optional quick-load from cache if needed before Firebase initializes fully
-      }
-    });
-
     function loadUsers() {
       onValue(ref(db, 'users'), (snapshot) => {
         allUsers = snapshot.val() || {};
@@ -540,4 +533,3 @@
   </script>
 </body>
 </html>
-
